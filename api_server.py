@@ -7,7 +7,6 @@ import re
 import os
 import hashlib
 import time
-import random
 from pathlib import Path
 from PIL import Image
 from datetime import datetime
@@ -165,41 +164,16 @@ def log(msg: str):
         timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         print(f"[{timestamp}] {msg}", flush=True)
 
-def generate_demo_judgment(prompt: str) -> dict:
-    """Generate a demo judgment when Tinker is not available"""
-    score_a = random.randint(4, 9)
-    score_b = random.randint(4, 9)
-
-    while score_a == score_b:
-        score_b = random.randint(4, 9)
-
-    winner = "A" if score_a > score_b else "B"
-
-    explanations = [
-        f"Based on the evaluation criteria, Response {winner} shows better alignment with the prompt requirements.",
-        f"Response {winner} demonstrates superior technical quality and composition.",
-        f"After careful analysis, Response {winner} better captures the intended elements.",
-        f"Response {winner} exhibits stronger consistency and visual coherence.",
-    ]
-
-    demo_response = f"""<evaluate_criteria>
-Response {winner} performs better across the evaluation criteria.
-- Faithfulness to prompt: Response {winner} better adheres to the requirements
-- Text-image alignment: Better consistency in Response {winner}
-- Overall quality: Response {winner} shows fewer artifacts and better composition
-</evaluate_criteria>
-
-<scores>
-\\boxed{{{score_a}, {score_b}}}
-</scores>"""
-
+def generate_error_response() -> dict:
+    """Return error when Tinker is not available"""
     return {
-        "winner": winner,
-        "scoreA": score_a,
-        "scoreB": score_b,
-        "explanation": random.choice(explanations),
-        "fullResponse": demo_response if ENVIRONMENT == "development" else "Demo mode active",
-        "demoMode": True
+        "error": True,
+        "message": "Model service is not available. Please configure API keys to enable the service.",
+        "winner": "N/A",
+        "scoreA": 0,
+        "scoreB": 0,
+        "explanation": "Service unavailable",
+        "fullResponse": ""
     }
 
 def parse_judgment(response: str) -> dict:
@@ -279,11 +253,11 @@ async def initialize_model():
     global sampling_client, tokenizer
 
     if DEMO_MODE:
-        log("Running in DEMO MODE - no Tinker model loaded")
+        log("Service unavailable - API keys not configured")
         return
 
     if not TINKER_AVAILABLE:
-        log("Tinker not available - running in demo mode")
+        log("Tinker module not available - service unavailable")
         return
 
     try:
@@ -308,7 +282,7 @@ async def initialize_model():
         log("Model ready")
     except Exception as e:
         log(f"Failed to initialize model: {e}")
-        log("Falling back to demo mode")
+        log("Service unavailable")
 
 @app.on_event("startup")
 async def startup_event():
@@ -350,10 +324,11 @@ async def judge_images(
         img_b_bytes = validate_and_process_image(img_b_data, "Image B")
 
         if DEMO_MODE or not sampling_client:
-            log("Generating demo judgment...")
-            judgment = generate_demo_judgment(prompt)
-            log(f"Demo judgment complete: Winner={judgment['winner']}")
-            return JSONResponse(content=judgment)
+            log("Model service not available")
+            return JSONResponse(
+                status_code=503,
+                content=generate_error_response()
+            )
 
         # Real model inference
         SYSTEM_PROMPT = """You are an expert judge for comparing two AI-generated responses.
@@ -415,7 +390,10 @@ Rules: Scores are 1-10, must be different (no ties)."""
         log(f"ERROR: {str(e)}")
 
         if DEMO_MODE:
-            return JSONResponse(content=generate_demo_judgment(prompt))
+            return JSONResponse(
+                status_code=503,
+                content=generate_error_response()
+            )
 
         raise HTTPException(
             status_code=500,
@@ -428,18 +406,18 @@ async def root():
     return {
         "name": "MJ1 Judge API",
         "version": "1.0.0",
-        "mode": "demo" if DEMO_MODE else "production",
-        "status": "ready"
+        "status": "unavailable" if DEMO_MODE else "ready",
+        "message": "Service requires API configuration" if DEMO_MODE else "Service ready"
     }
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {
-        "status": "healthy",
-        "mode": "demo" if DEMO_MODE else "production",
+        "status": "degraded" if DEMO_MODE else "healthy",
         "model_loaded": sampling_client is not None,
-        "environment": ENVIRONMENT
+        "environment": ENVIRONMENT,
+        "service_available": not DEMO_MODE
     }
 
 if __name__ == "__main__":
@@ -453,5 +431,5 @@ if __name__ == "__main__":
         )
     else:
         log(f"Starting MJ1 server on http://{API_HOST}:{API_PORT}")
-        log(f"Mode: {'DEMO' if DEMO_MODE else 'PRODUCTION'}")
+        log(f"Status: {'SERVICE UNAVAILABLE - Configure API keys' if DEMO_MODE else 'READY'}")
         uvicorn.run(app, host=API_HOST, port=API_PORT)
