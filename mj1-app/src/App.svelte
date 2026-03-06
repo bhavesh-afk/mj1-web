@@ -6,6 +6,7 @@
   import PromptInput from './lib/PromptInput.svelte';
   import ResultDisplay from './lib/ResultDisplay.svelte';
   import LoadingScreen from './lib/LoadingScreen.svelte';
+  import Examples from './lib/Examples.svelte';
 
   let imagesA = [];
   let imagesB = [];
@@ -66,6 +67,17 @@
     promptImages = [];
     prompt = '';
     judgment = null;
+  }
+
+  async function handleExampleSelect(example) {
+    reset();
+    imageA = example.imageA;
+    imageB = example.imageB;
+    prompt = example.prompt;
+
+    if (example.autoRun) {
+      await handleJudge();
+    }
   }
 </script>
 
@@ -191,6 +203,9 @@
           Generate Judgment
         </button>
       </section>
+
+      <!-- Examples Section -->
+      <Examples onSelectExample={handleExampleSelect} />
     {:else}
       <!-- Results Section -->
       <section class="results">
