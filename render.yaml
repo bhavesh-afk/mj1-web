@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: mj1-proxy
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python mj1_proxy.py
+    envVars:
+      - key: MJ1_CHECKPOINT
+        value: tinker://0a086612-730e-5c87-92bf-a2bd1f101bc3:train:0/weights/step_0040
+      - key: TINKER_API_KEY
+        sync: false
+      - key: BASE_MODEL
+        value: Qwen/Qwen3-VL-30B-A3B-Instruct
+      - key: LORA_RANK
+        value: 64

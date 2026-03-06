@@ -3,6 +3,26 @@
   export let imageA;
   export let imageB;
 
+  let copyButtonText = 'Copy Full Response';
+
+  async function copyToClipboard() {
+    if (judgment.fullResponse) {
+      try {
+        await navigator.clipboard.writeText(judgment.fullResponse);
+        copyButtonText = 'Copied!';
+        setTimeout(() => {
+          copyButtonText = 'Copy Full Response';
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+        copyButtonText = 'Failed to copy';
+        setTimeout(() => {
+          copyButtonText = 'Copy Full Response';
+        }, 2000);
+      }
+    }
+  }
+
   function extractAnalysis(fullResponse) {
     if (!fullResponse) return judgment.explanation;
 
@@ -98,6 +118,9 @@
   {#if judgment.fullResponse}
     <details class="full-response">
       <summary class="response-summary">Full Response with XML Tags</summary>
+      <button class="copy-button" on:click={copyToClipboard}>
+        {copyButtonText}
+      </button>
       <pre class="response-content">{judgment.fullResponse}</pre>
     </details>
   {/if}
@@ -370,7 +393,7 @@
   }
 
   .response-content {
-    margin-top: var(--spacing-lg);
+    margin-top: var(--spacing-md);
     padding: var(--spacing-lg);
     background: var(--color-background);
     border: 1px solid var(--color-border);
@@ -383,6 +406,31 @@
     white-space: pre-wrap;
     word-break: break-word;
     text-align: left;
+  }
+
+  .copy-button {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background: var(--color-accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .copy-button:hover {
+    background: #39a1a4;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(45, 127, 130, 0.2);
+  }
+
+  .copy-button:active {
+    transform: translateY(0);
   }
 
   @media (max-width: 768px) {

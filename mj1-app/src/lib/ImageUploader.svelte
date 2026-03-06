@@ -10,7 +10,14 @@
     isDragging = false;
 
     const file = e.dataTransfer?.files[0] || e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file) {
+      // Only allow JPG/JPEG and PNG
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+      if (!validTypes.includes(file.type.toLowerCase())) {
+        alert('Only JPG/JPEG and PNG images are supported. GIF, SVG, and other formats may cause reasoning errors.');
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (e) => {
         image = e.target.result;
@@ -65,13 +72,13 @@
         <path d="M4 32L16 20L24 28L32 20L44 32" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <p class="upload-text">Drop image here or click to browse</p>
-      <p class="upload-hint">Supports JPG, PNG, GIF</p>
+      <p class="upload-hint">Supports JPG and PNG only</p>
     </button>
   {/if}
 
   <input
     type="file"
-    accept="image/*"
+    accept="image/jpeg,image/jpg,image/png"
     on:change={handleDrop}
     bind:this={inputElement}
     style="display: none"
